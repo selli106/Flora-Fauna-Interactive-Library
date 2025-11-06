@@ -1,0 +1,5 @@
+{
+  "name": "Flora and Fauna Interactive Library",
+  "description": "An interactive library to explore flora and fauna data. Users can search and filter through various species, view detailed information including taxonomy and conservation status, and access external resources like Wikipedia and iNaturalist.",
+  "requestFramePermissions": []
+}
