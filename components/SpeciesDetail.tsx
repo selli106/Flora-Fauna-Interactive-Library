@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Species } from '../types';
+import { fetchSpeciesImageUrl } from '../services/imageFetcher';
 
 interface Props {
   species: Species | null;
@@ -35,64 +36,16 @@ const SpeciesDetail: React.FC<Props> = ({ species }) => {
   const [isImageLoading, setIsImageLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchImagesWithFallback = async () => {
-      if (!species?.speciesName) {
-        setImageUrl(null);
-        setIsImageLoading(false);
-        return;
-      }
+    if (!species) return;
 
+    const getImage = async () => {
       setIsImageLoading(true);
-      const searchName = encodeURIComponent(species.speciesName.split('(')[0].trim());
-
-      // --- 1. Try Wikipedia ---
-      try {
-        const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${searchName}&prop=pageimages&format=json&pithumbsize=1200&origin=*`;
-        const response = await fetch(wikiUrl);
-        if (!response.ok) throw new Error('Wikipedia API response not OK');
-        
-        const data = await response.json();
-        const pages = data.query.pages;
-        const pageId = Object.keys(pages)[0];
-
-        if (pageId !== '-1') {
-          const imageUrlFromWiki = pages[pageId]?.thumbnail?.source;
-          if (imageUrlFromWiki) {
-            setImageUrl(imageUrlFromWiki);
-            setIsImageLoading(false);
-            return; // Found image, so we stop here.
-          }
-        }
-      } catch (error) {
-        console.warn("Failed to fetch image from Wikipedia, trying iNaturalist.", error);
-      }
-
-      // --- 2. Fallback to iNaturalist ---
-      try {
-        const iNatTaxaUrl = `https://api.inaturalist.org/v1/taxa?q=${searchName}`;
-        const taxaResponse = await fetch(iNatTaxaUrl);
-        if (!taxaResponse.ok) throw new Error('iNaturalist Taxa API response not OK');
-
-        const taxaData = await taxaResponse.json();
-        if (taxaData.results && taxaData.results.length > 0) {
-          const taxon = taxaData.results[0];
-          const imageUrlFromINat = taxon.default_photo?.large_url || taxon.default_photo?.medium_url;
-          if (imageUrlFromINat) {
-            setImageUrl(imageUrlFromINat);
-            setIsImageLoading(false);
-            return; // Found image, stop here.
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch image from iNaturalist.", error);
-      }
-
-      // --- 3. Final Fallback (No Image) ---
-      setImageUrl(null);
+      const url = await fetchSpeciesImageUrl(species);
+      setImageUrl(url);
       setIsImageLoading(false);
     };
 
-    fetchImagesWithFallback();
+    getImage();
   }, [species]);
 
 
