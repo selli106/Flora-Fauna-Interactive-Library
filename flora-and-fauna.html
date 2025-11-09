@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flora and Fauna Interactive Library (Single File)</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- JSZip for creating zip files for download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- React and ReactDOM for the UI -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel to transpile JSX directly in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      // All application code is consolidated here.
+      
+      const { useState, useEffect, useMemo } = React;
+      // For JSZip from CDN
+      // declare var JSZip: any;
+
+      // --- START: services/data.ts ---
+      const csvData = `
+"Species","Species Name","Scientific Name Authorship","Taxon Rank","Kingdom","Phylum","Class","Order","Family","Genus","Vernacular Name","Number of records","Republic of Korea-Australia Migratory Bird Agreement (ROKAMBA)","South Australia : Conservation Status","China-Australia Migratory Bird Agreement (CAMBA)","Bonn Convention Migratory Taxa","Victoria : Conservation Status","Japan-Australia Migratory Bird Agreement (JAMBA)","Australian Capital Territory : Conservation Status","Tasmania : Conservation Status","Queensland : Conservation Status","EPBC Act Threatened Species","Northern Territory : Conservation Status","New South Wales : Conservation Status","Western Australia : Conservation status: Priority 4","Western Australia : Conservation status","Western Australia : Conservation status: Priority 3","Western Australia : Conservation status: Priority 2","Western Australia : Conservation status: Priority 1","Weeds of National Significance (WoNS) as at Feb. 2013","WA State Notifiable Pests","Key Australian weed species list (ABS)","Key Australian feral animal species list (ABS)"
+"https://biodiversity.org.au/afd/taxa/5c2a733c-9f1a-4ec5-8dd6-951118f3fbfc","Sarcophilus harrisii","(Boitard, 1841)","species","Animalia","Chordata","Mammalia","Dasyuromorphia","Dasyuridae","Sarcophilus","Tasmanian Devil","1235","","","","","","","","Endangered","","Endangered","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/3e32fa0d-662c-436e-84c0-eeff4f016e35","Platycephalus bassensis","Cuvier, 1829","species","Animalia","Chordata","Actinopterygii","Scorpaeniformes","Platycephalidae","Platycephalus","Southern Sand Flathead","322","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/5308808","Eucalyptus obliqua","L'Hér.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Messmate Stringybark","127","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://biodiversity.org.au/afd/taxa/ae55e04a-62da-4113-a28b-88d5bed604e2","Corvus tasmanicus","Mathews, 1912","species","Animalia","Chordata","Aves","Passeriformes","Corvidae","Corvus","Forest Raven","117","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/266c76ff-7b36-418a-83e2-718c937de359","Notorynchus cepedianus","(Péron, 1807)","species","Animalia","Chordata","Chondrichthyes","Hexanchiformes","Hexanchidae","Notorynchus","Broadnose Shark","115","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/62eac26d-2beb-407c-ae0b-1cbce32afb01","Strepera (Strepera) fuliginosa","(Gould, 1837)","species","Animalia","Chordata","Aves","Passeriformes","Artamidae","Strepera","Black Currawong","110","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/c6e478fe-f199-463f-8576-a77108fd73e2","Platycercus (Platycercus) caledonicus","(Gmelin, 1788)","species","Animalia","Chordata","Aves","Psittaciformes","Psittacidae","Platycercus","Green Rosella","101","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/2a768ef6-c37f-4735-9ab3-8655adc33948","Anthochaera (Anthochaera) paradoxa","(Daudin, 1800)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Anthochaera","Yellow Wattlebird","95","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/dec8c88f-7f20-4f30-b2af-c75d09fb066c","Nycticorax caledonicus","(Gmelin, 1789)","species","Animalia","Chordata","Aves","Ciconiiformes","Ardeidae","Nycticorax","Nankeen Night-heron","95","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/0503c1fc-7d2d-4c96-ac97-e0f9b0d7b7a1","Nesoptilotis flavicollis","(Vieillot, 1817)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Nesoptilotis","Yellow-throated Honeyeater","93","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/46306d30-cfa1-4528-906b-cae2e9c5c0e8","Vanellus (Lobipluvia) miles","(Boddaert, 1783)","species","Animalia","Chordata","Aves","Charadriiformes","Charadriidae","Vanellus","Masked Lapwing","91","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/e848916c-5f2d-43ef-8cba-8e32a9034377","Cygnus atratus","(Latham, 1801)","species","Animalia","Chordata","Aves","Anseriformes","Anatidae","Cygnus","Black Swan","89","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/2c1a9dfc-56b2-404d-b8fa-360110d04167","Acanthorhynchus tenuirostris","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Acanthorhynchus","Eastern Spinebill","84","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/5254fe03-630b-44b2-9233-df51a7b8f25f","Pardalotus (Pardalotus) punctatus","(Shaw, 1792)","species","Animalia","Chordata","Aves","Passeriformes","Pardalotidae","Pardalotus","Spotted Pardalote","83","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/ae56080e-4e73-457d-93a1-0be6a1d50f34","Malurus (Malurus) cyaneus","(Ellis, 1782)","species","Animalia","Chordata","Aves","Passeriformes","Maluridae","Malurus","Superb Fairy-wren","83","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2886247","Pimelea flava","R.Br.","species","Plantae","Charophyta","Equisetopsida","Malvales","Thymelaeaceae","Pimelea","Yellow Rice-flower","76","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/33702f89-60b2-4098-9cb0-20180783514d","Passer (Passer) domesticus","(Linnaeus, 1758)","species","Animalia","Chordata","Aves","Passeriformes","Passeridae","Passer","House Sparrow","69","","","","","","","","","","","","","","","","","","","","","Y"
+"https://biodiversity.org.au/afd/taxa/97a59c84-af21-4cdc-bac7-a97c5201db42","Rhipidura (Rhipidura) albiscapa","Gould, 1840","species","Animalia","Chordata","Aves","Passeriformes","Rhipiduridae","Rhipidura","Grey Fantail","68","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/da002998-b551-4328-ac4e-5e04fc72708b","Phylidonyris (Meliornis) novaehollandiae","(Latham, 1790)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Phylidonyris","New Holland Honeyeater","58","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51440555","Eucalyptus globulus","Labill.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Tasmanian Blue Gum","58","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://biodiversity.org.au/afd/taxa/e2070aa5-7ab4-41a8-9b41-b3f0c2e26390","Chroicocephalus novaehollandiae","(Stephens, 1826)","species","Animalia","Chordata","Aves","Charadriiformes","Laridae","Chroicocephalus","Silver Gull","57","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/1c89eedb-42b6-4675-b688-2e0b59ea689e","Litoria ewingii","(Duméril & Bibron, 1841)","species","Animalia","Chordata","Amphibia","Anura","Pelodryadidae","Litoria","Brown Tree Frog","56","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/274562d2-a5d6-42bb-a9bd-2f6b586e2c73","Meuschenia freycineti","(Quoy & Gaimard, 1824)","species","Animalia","Chordata","Actinopterygii","Tetraodontiformes","Monacanthidae","Meuschenia","Sixspine Leatherjacket","55","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/7f0b5430-3e37-4dd4-8dff-d6b288cde445","Turdus merula","Linnaeus, 1758","species","Animalia","Chordata","Aves","Passeriformes","Turdidae","Turdus","Eurasian Blackbird","54","","","","","","","","","","","","","","","","","","","","","Y"
+"https://biodiversity.org.au/afd/taxa/7e6894af-e95e-411b-9773-80764569d658","Mustelus antarcticus","Günther, 1870","species","Animalia","Chordata","Chondrichthyes","Carcharhiniformes","Triakidae","Mustelus","Gummy Shark","53","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/8fd1977b-9edf-4ddf-b6cf-24a09db4d18c","Egretta novaehollandiae","(Latham, 1790)","species","Animalia","Chordata","Aves","Ciconiiformes","Ardeidae","Egretta","White-faced Heron","53","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/23e2ccef-06b0-4749-abc6-d8a710b94f69","Aquila (Uroaetus) audax","(Latham, 1801)","species","Animalia","Chordata","Aves","Accipitriformes","Accipitridae","Aquila","Wedge-tailed Eagle","52","","","","","","","","Endangered","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/b7bd8014-7231-4782-90a8-c62ea495536b","Galeorhinus galeus","(Linnaeus, 1758)","species","Animalia","Chordata","Chondrichthyes","Carcharhiniformes","Triakidae","Galeorhinus","School Shark","52","","","","","","","","","","Conservation Dependent","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/618a2c4c-ddf2-4042-a6a7-34a3e893c219","Anthochaera (Anellobia) chrysoptera","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Anthochaera","Little Wattlebird","49","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/5291343e-fdeb-4a65-8ba5-928f5b96acf5","Gymnorhina tibicen","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Artamidae","Gymnorhina","Australian Magpie","48","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/62f6a29a-7b0c-4e5c-83ea-0074f99d133b","Acanthiza (Acanthiza) pusilla","(Shaw, 1790)","species","Animalia","Chordata","Aves","Passeriformes","Acanthizidae","Acanthiza","Brown Thornbill","48","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/7af45089-4a0f-4303-a417-1708623809af","Colluricincla (Colluricincla) harmonica","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Pachycephalidae","Colluricincla","Grey Shrike-thrush","48","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51290421","Eucalyptus viminalis","Labill.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Ribbon Gum","48","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://biodiversity.org.au/afd/taxa/145b081d-eca7-4d9b-9171-b97e2d061536","Zanda funerea","(Shaw, 1794)","species","Animalia","Chordata","Aves","Psittaciformes","Cacatuidae","Zanda","Yellow-tailed Black-cockatoo","46","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/61f2bc62-dd50-4ba2-82a0-0377d386e4d8","Phylidonyris (Phylidonyris) pyrrhopterus","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Phylidonyris","Crescent Honeyeater","45","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/681ea214-3788-4cc6-8b97-0b325d6bba6b","Cracticus torquatus","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Artamidae","Cracticus","Grey Butcherbird","45","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/06d1981c-58a7-4370-9e9a-158dfb89d600","Larus pacificus","Latham, 1801","species","Animalia","Chordata","Aves","Charadriiformes","Laridae","Larus","Pacific Gull","44","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/fe0d4e5e-6bd5-4e46-a77c-00e8cec73410","Zosterops lateralis","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Zosteropidae","Zosterops","Silvereye","44","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2895650","Pomaderris apetala","Labill.","species","Plantae","Charophyta","Equisetopsida","Rosales","Rhamnaceae","Pomaderris","Tainui Pomaderris","44","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/30edbd1a-6367-4d84-87f1-3566e6cc54d6","Pachycephala (Pachycephala) pectoralis","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Pachycephalidae","Pachycephala","Golden Whistler","42","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51445257","Banksia marginata","Cav.","species","Plantae","Charophyta","Equisetopsida","Proteales","Proteaceae","Banksia","Silver Banksia","42","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/1fc76c4d-4830-4129-9b86-1c7e944c3c50","Dacelo (Dacelo) novaeguineae","(Hermann, 1783)","species","Animalia","Chordata","Aves","Coraciiformes","Alcedinidae","Dacelo","Laughing Kookaburra","41","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/9abbd117-3bd0-4e07-9a3d-a69dd6eb938a","Phalacrocorax (Anacarbo) fuscescens","(Vieillot, 1817)","species","Animalia","Chordata","Aves","Pelecaniformes","Phalacrocoracidae","Phalacrocorax","Black-faced Cormorant","36","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51290024","Eucalyptus regnans","F.Muell.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Mountain Ash","36","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51440457","Eucalyptus amygdalina","Labill.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Messmate","36","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://biodiversity.org.au/afd/taxa/dd1217b7-1867-427d-9e0d-4a70e95e8b8b","Crinia signifera","Girard, 1853","species","Animalia","Chordata","Amphibia","Anura","Myobatrachidae","Crinia","Common Froglet","35","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2903496","Acacia melanoxylon","R.Br.","species","Plantae","Charophyta","Equisetopsida","Fabales","Fabaceae","Acacia","Blackwood","35","","","","","","","","","","","","","","","","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51249803","Pteridium esculentum","(G.Forst.) Cockayne","species","Plantae","Charophyta","Equisetopsida","Polypodiales","Dennstaedtiaceae","Pteridium","Austral Bracken","35","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/46b8dd40-72ad-4f23-84af-93f0c881e162","Sericornis (Sericornis) humilis","Gould, 1838","species","Animalia","Chordata","Aves","Passeriformes","Acanthizidae","Sericornis","Tasmanian Scrubwren","33","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/8ce669b4-fb53-4be0-9203-b02444eca02a","Strepera (Neostrepera) versicolor","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Artamidae","Strepera","Grey Currawong","33","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/ee2cb6a9-e17c-4ca7-8aef-76d69eb969ed","Trichosurus vulpecula","(Kerr, 1792)","species","Animalia","Chordata","Mammalia","Diprotodontia","Phalangeridae","Trichosurus","Common Brushtail Possum","33","","Rare","","","","","","","","","Endangered","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/3af244a5-2205-48b9-b4b1-2b51721a20b2","Larus dominicanus","Lichtenstein, 1823","species","Animalia","Chordata","Aves","Charadriiformes","Laridae","Larus","Kelp Gull","31","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/dd8852f7-9903-4222-b596-7ccce70aaa33","Anas (Nettion) castanea","(Eyton, 1838)","species","Animalia","Chordata","Aves","Anseriformes","Anatidae","Anas","Chestnut Teal","31","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/6d1d399a-eb0e-420c-b56f-54b90c40dd7f","Trachurus declivis","(Jenyns, 1841)","species","Animalia","Chordata","Actinopterygii","Perciformes","Carangidae","Trachurus","Jack Mackerels","30","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51436821","Acacia verticillata","(L'Hér.) Willd.","species","Plantae","Charophyta","Equisetopsida","Fabales","Fabaceae","Acacia","Prickly Moses","30","","","","","","","","","","","","","","","","Poorly-known species","Poorly-known species","","","",""
+"https://biodiversity.org.au/afd/taxa/415ec753-156c-4155-b81c-0494ee516cce","Melithreptus (Melithreptus) affinis","(Lesson, 1839)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Melithreptus","Black-headed Honeyeater","29","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/dadc6ab4-e986-4173-a476-2760b9760061","Sturnus (Sturnus) vulgaris","Linnaeus, 1758","species","Animalia","Chordata","Aves","Passeriformes","Sturnidae","Sturnus","Common Starling","29","","","","","","","","","","","","","","","","","","","Y","","Y"
+"https://id.biodiversity.org.au/node/apni/2895205","Lomandra longifolia","Labill.","species","Plantae","Charophyta","Equisetopsida","Asparagales","Asparagaceae","Lomandra","Spiny-headed Mat-rush","27","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2914099","Exocarpos cupressiformis","Labill.","species","Plantae","Charophyta","Equisetopsida","Santalales","Santalaceae","Exocarpos","Native Cherry","27","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51435300","Epacris impressa","Labill.","species","Plantae","Charophyta","Equisetopsida","Ericales","Ericaceae","Epacris","Common Heath","27","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/0b7c528a-4104-4a96-853e-05a37c327067","Microcarbo melanoleucos","(Vieillot, 1817)","species","Animalia","Chordata","Aves","Pelecaniformes","Phalacrocoracidae","Microcarbo","Little Pied Cormorant","26","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/127e0064-a097-44ce-82a4-8bc30f5770b8","Limnodynastes dumerilii","Peters, 1863","species","Animalia","Chordata","Amphibia","Anura","Limnodynastidae","Limnodynastes","Eastern Banjo Frog","26","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2911404","Astroloma humifusum","(Cav.) R.Br.","species","Plantae","Charophyta","Equisetopsida","Ericales","Ericaceae","Astroloma","Cranberry Heath","26","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/4e118c73-06a7-4131-bd67-5da5d2d61fd7","Hirundo (Hirundo) neoxena","Gould, 1843","species","Animalia","Chordata","Aves","Passeriformes","Hirundinidae","Hirundo","Welcome Swallow","25","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/1866a85d-812a-43eb-8d53-ba1352d5e7bb","Attenborougharion rubicundus","(Dartnall & Kershaw, 1978)","species","Animalia","Mollusca","Gastropoda","Stylommatophora","Helicarionidae","Attenborougharion","","23","","","","","","","","Near Threatened","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/947595db-244f-4160-b30d-0473b37d857b","Poliocephalus poliocephalus","(Jardine & Selby, 1827)","species","Animalia","Chordata","Aves","Podicipediformes","Podicipedidae","Poliocephalus","Hoary-headed Grebe","22","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2892323","Pimelea nivea","Labill.","species","Plantae","Charophyta","Equisetopsida","Malvales","Thymelaeaceae","Pimelea","","22","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/0c870c94-082a-467b-97e7-356402bff989","Asaphes vulgaris","Walker, 1834","species","Animalia","Arthropoda","Insecta","Hymenoptera","Pteromalidae","Asaphes","","21","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/8a981792-0498-4137-aba0-bbce748c8fbd","Aldrichetta forsteri","(Valenciennes, 1836)","species","Animalia","Chordata","Actinopterygii","Mugiliformes","Mugilidae","Aldrichetta","Yelloweye Mullet","21","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2894971","Eucalyptus tenuiramis","Miq.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Silver Peppermint","21","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://biodiversity.org.au/afd/taxa/82e69509-af63-4502-86f7-43362b777865","Thylogale billardierii","(Desmarest, 1822)","species","Animalia","Chordata","Mammalia","Diprotodontia","Macropodidae","Thylogale","Tasmanian Pademelon","20","","Endangered","","","Threatened","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2896906","Leptospermum scoparium","J.R.Forst. & G.Forst.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Leptospermum","Black Tea-tree","20","","","","","","","","","Near Threatened","","","","Rare, Near Threatened","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/0d4c9c0c-51d3-44e0-a365-fe0f8b791c66","Tachyglossus aculeatus","(Shaw, 1792)","species","Animalia","Chordata","Mammalia","Monotremata","Tachyglossidae","Tachyglossus","Short-beaked Echidna","19","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/1441c509-faf3-405e-a534-c51cccc4d720","Thalasseus bergii","(Lichtenstein, 1823)","species","Animalia","Chordata","Aves","Charadriiformes","Laridae","Thalasseus","Crested Tern","19","","","","","","Listed","","","","","","","","Migratory","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/ec2c76c7-0cd9-4f26-935e-4d90762590fa","Haematopus longirostris","Vieillot, 1817","species","Animalia","Chordata","Aves","Charadriiformes","Haematopodidae","Haematopus","Australian Pied Oystercatcher","19","","Rare","","","","","","","","","","Endangered","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/f0088853-6045-404b-b866-9f4d6bf15015","Glossopsitta concinna","(Shaw, 1791)","species","Animalia","Chordata","Aves","Psittaciformes","Psittacidae","Glossopsitta","Musk Lorikeet","19","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/7f744e41-a9cf-4784-b892-64cc089f99f3","Alloxysta australiae","(Ashmead, 1900)","species","Animalia","Arthropoda","Insecta","Hymenoptera","Figitidae","Alloxysta","","18","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/e3103245-2da1-4cc5-952d-49153f466bbf","Pardalotus (Pardalotinus) striatus","(Gmelin, 1789)","species","Animalia","Chordata","Aves","Passeriformes","Pardalotidae","Pardalotus","Striated Pardalote","18","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/ee7498bf-c57c-4463-b313-710d4959cc95","Manorina (Myzantha) melanocephala","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Meliphagidae","Manorina","Noisy Miner","18","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/f84a63c9-581d-4cb3-852f-e27f1a48e1d7","Acanthiza (Acanthiza) ewingii","Gould, 1844","species","Animalia","Chordata","Aves","Passeriformes","Acanthizidae","Acanthiza","Tasmanian Thornbill","17","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2907368","Hypochaeris radicata","L.","species","Plantae","Charophyta","Equisetopsida","Asterales","Asteraceae","Hypochaeris","Cats-ear","17","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2920020","Eucalyptus ovata","Labill.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Swamp Gum","17","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51448753","Viola hederacea","Labill.","species","Plantae","Charophyta","Equisetopsida","Malpighiales","Violaceae","Viola","Ivy-leaf Violet","17","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/408ee81c-6558-4ddf-b732-f9ad7d09f1ae","Cacomantis (Vidgenia) flabelliformis","(Latham, 1801)","species","Animalia","Chordata","Aves","Cuculiformes","Cuculidae","Cacomantis","Fan-tailed Cuckoo","16","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/e948fd99-7550-4d1b-866a-75666cc61f96","Heteroscenes pallidus","(Latham, 1801)","species","Animalia","Chordata","Aves","Cuculiformes","Cuculidae","Heteroscenes","Pallid Cuckoo","16","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2906921","Acaena novae-zelandiae","Kirk","species","Plantae","Charophyta","Equisetopsida","Rosales","Rosaceae","Acaena","Bidgee-widgee","16","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2909608","Lomatia tinctoria","(Labill.) R.Br.","species","Plantae","Charophyta","Equisetopsida","Proteales","Proteaceae","Lomatia","Guitar Plant","16","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/05b0f88f-2b75-4885-97e1-e83872f82738","Haematopus fuliginosus","Gould, 1845","species","Animalia","Chordata","Aves","Charadriiformes","Haematopodidae","Haematopus","Sooty Oystercatcher","15","","","","","","","","","","","","Vulnerable","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2892486","Cassinia aculeata","(Labill.) R.Br.","species","Plantae","Charophyta","Equisetopsida","Asterales","Asteraceae","Cassinia","Dolly Bush","15","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/07f2e8c3-1e0c-4a02-8177-bf9b54435b93","Carduelis carduelis","(Linnaeus, 1758)","species","Animalia","Chordata","Aves","Passeriformes","Fringillidae","Carduelis","European Goldfinch","14","","","","","","","","","","","","","","","","","","","","","Y"
+"https://biodiversity.org.au/afd/taxa/7de6b16a-f854-4b4b-88cf-81868ce74ad8","Felis catus","Linnaeus, 1758","species","Animalia","Chordata","Mammalia","Carnivora","Felidae","Felis","Cat","14","","","","","","","","","","","","","","","","","","","","","Y"
+"https://biodiversity.org.au/afd/taxa/99447700-c858-4ac4-aab0-2f3d8d81c11e","Haletta semifasciata","(Valenciennes, 1840)","species","Animalia","Chordata","Actinopterygii","Perciformes","Labridae","Haletta","Blue Weed-whiting","14","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2912379","Centaurium erythraea","Rafn","species","Plantae","Charophyta","Equisetopsida","Gentianales","Gentianaceae","Centaurium","Common Centaury","14","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2916232","Eucalyptus pulchella","Desf.","species","Plantae","Charophyta","Equisetopsida","Myrtales","Myrtaceae","Eucalyptus","Narrow-leaved Peppermint","14","","","","","Critically Endangered","","","","Near Threatened","","","","Rare, Near Threatened","","","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51442338","Bursaria spinosa","Cav.","species","Plantae","Charophyta","Equisetopsida","Apiales","Pittosporaceae","Bursaria","Sweet Native Blackthorn","14","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/3536411a-b3a0-4786-8f46-40fa6f00dcd1","Pseudophycis palmata","(Klunzinger, 1872)","species","Animalia","Chordata","Actinopterygii","Gadiformes","Moridae","Pseudophycis","Red Cod","13","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/69c22b10-ff42-4bef-bb0f-88dc01a8f96c","Coracina (Coracina) novaehollandiae","(Gmelin, 1789)","species","Animalia","Chordata","Aves","Passeriformes","Campephagidae","Coracina","Black-faced Cuckoo-shrike","13","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/76bbd715-5428-429d-a00a-92835ce695e4","Perameles gunnii","Gray, 1838","species","Animalia","Chordata","Mammalia","Peramelemorphia","Peramelidae","Perameles","Eastern Barred Bandicoot","13","","Endangered","","","Endangered","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2886539","Erica lusitanica","Rudolphi","species","Plantae","Charophyta","Equisetopsida","Ericales","Ericaceae","Erica","Spanish Heath","13","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2890946","Bossiaea prostrata","R.Br.","species","Plantae","Charophyta","Equisetopsida","Fabales","Fabaceae","Bossiaea","Creeping Bossiaea","13","","","","","","","","","","","","","","","","Poorly-known species","","","","",""
+"https://id.biodiversity.org.au/node/apni/2895959","Pimelea humilis","R.Br.","species","Plantae","Charophyta","Equisetopsida","Malvales","Thymelaeaceae","Pimelea","Low Riceflower","13","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2916956","Microlaena stipoides","(Labill.) R.Br.","species","Plantae","Charophyta","Equisetopsida","Poales","Poaceae","Microlaena","Weeping Grass","13","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/241dd5c6-1235-4eb9-b3d5-a44af6b0d444","Anas (Anas) superciliosa","Gmelin, 1789","species","Animalia","Chordata","Aves","Anseriformes","Anatidae","Anas","Pacific Black Duck","12","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/585d6b74-fd4f-4e56-8dc0-a29fad069498","Acanthornis magna","(Gould, 1855)","species","Animalia","Chordata","Aves","Passeriformes","Acanthizidae","Acanthornis","Scrubtit","12","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/c96b19fd-2a54-4361-a5cf-baecf741310e","Phalacrocorax (Phalacrocorax) sulcirostris","(Brandt, 1837)","species","Animalia","Chordata","Aves","Pelecaniformes","Phalacrocoracidae","Phalacrocorax","Little Black Cormorant","12","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/fe74e658-4848-437a-a23d-f1001a198552","Petroica (Littlera) phoenicea","Gould, 1837","species","Animalia","Chordata","Aves","Passeriformes","Petroicidae","Petroica","Flame Robin","12","","Vulnerable","","","","","","","","","","Vulnerable","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2894435","Comesperma volubile","Labill.","species","Plantae","Charophyta","Equisetopsida","Fabales","Polygalaceae","Comesperma","Love Creeper","12","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2898281","Goodenia ovata","Sm.","species","Plantae","Charophyta","Equisetopsida","Asterales","Goodeniaceae","Goodenia","Hop Goodenia","12","","","","","","","","","","","","","","","Poorly-known species","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/node/apni/2899717","Goodenia lanata","R.Br.","species","Plantae","Charophyta","Equisetopsida","Asterales","Goodeniaceae","Goodenia","Trailing Goodenia","12","","","","","","","","","","","","","","","Poorly-known species","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/node/apni/2901282","Pultenaea juniperina","Labill.","species","Plantae","Charophyta","Equisetopsida","Fabales","Fabaceae","Pultenaea","Prickly Bush-pea","12","","","","","","","","","","","","Endangered","","","","Poorly-known species","","","","",""
+"https://id.biodiversity.org.au/node/apni/2909704","Poa rodwayi","Vickery","species","Plantae","Charophyta","Equisetopsida","Poales","Poaceae","Poa","Velvet Tussock-grass","12","","Rare","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51270386","Allocasuarina verticillata","(Lam.) L.A.S.Johnson","species","Plantae","Charophyta","Equisetopsida","Fagales","Casuarinaceae","Allocasuarina","Drooping Sheoak","12","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51409705","Prasophyllum brevilabre","(Lindl.) Hook.f.","species","Plantae","Charophyta","Equisetopsida","Asparagales","Orchidaceae","Prasophyllum","Short-lipped Leek Orchid","12","","","","","","","","Endangered","","","","Critically Endangered","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51744698","Lagenophora stipitata","(Labill.) Druce","species","Plantae","Charophyta","Equisetopsida","Asterales","Asteraceae","Lagenophora","Common Bottle-daisy","12","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/320aeab1-aead-4b82-a580-8cd3ae99fdef","Artamus (Angroyan) cyanopterus","(Latham, 1801)","species","Animalia","Chordata","Aves","Passeriformes","Artamidae","Artamus","Dusky Woodswallow","11","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/43abe3ea-7ccc-41cc-920f-d9cfa107207e","Pelecanus conspicillatus","Temminck, 1824","species","Animalia","Chordata","Aves","Pelecaniformes","Pelecanidae","Pelecanus","Australian Pelican","11","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/c4dfafef-5192-4a3d-815c-040c393e9bca","Notamacropus rufogriseus","(Desmarest, 1817)","species","Animalia","Chordata","Mammalia","Diprotodontia","Macropodidae","Notamacropus","Red-necked Wallaby","11","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/e4291e99-21ee-4e44-b2b3-845a95ecd6fc","Scaptia jacksonii","(Macquart, 1837)","species","Animalia","Arthropoda","Insecta","Diptera","Tabanidae","Scaptia","","11","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2913125","Olearia viscosa","(Labill.) Benth.","species","Plantae","Charophyta","Equisetopsida","Asterales","Asteraceae","Olearia","Viscid Daisy-bush","11","","","","","Critically Endangered","","","","","","","","","","","","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/node/apni/2913964","Bedfordia salicina","(Labill.) DC.","species","Plantae","Charophyta","Equisetopsida","Asterales","Asteraceae","Bedfordia","Dogwood","11","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51433732","Hypericum gramineum","G.Forst.","species","Plantae","Charophyta","Equisetopsida","Malpighiales","Hypericaceae","Hypericum","Small St John's Wort","11","","","","","","","","","","","","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/52149285-a12a-4085-a285-b41af5ba3ce3","Dasyurus viverrinus","(Shaw, 1800)","species","Animalia","Chordata","Mammalia","Dasyuromorphia","Dasyuridae","Dasyurus","Luaner","10","","Endangered","","","Extinct in the Wild","","Endangered","","","Endangered","","Endangered","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/66d42847-c556-4fa3-902c-a91d9f517286","Vombatus ursinus","(Shaw, 1800)","species","Animalia","Chordata","Mammalia","Diprotodontia","Vombatidae","Vombatus","Bare-nosed Wombat","10","","Rare","","","","","","","Near Threatened","","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/dc420306-4746-4663-9c2d-cf367587f728","Haliaeetus (Pontoaetus) leucogaster","(Gmelin, 1788)","species","Animalia","Chordata","Aves","Accipitriformes","Accipitridae","Haliaeetus","White-bellied Sea-eagle","10","","Endangered","","","Endangered","","","Endangered","","","","Vulnerable","","","","","","","","",""
+"https://biodiversity.org.au/afd/taxa/e9e85f33-224c-40ce-b48d-290d1a41eb9d","Isoodon obesulus","(Shaw, 1797)","species","Animalia","Chordata","Mammalia","Peramelemorphia","Peramelidae","Isoodon","Southern Brown Bandicoot","10","","","","","","","Endangered","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2896465","Ozothamnus scutellifolius","Hook.f.","species","Plantae","Charophyta","Equisetopsida","Asterales","Asteraceae","Ozothamnus","","10","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2898238","Carex breviculmis","R.Br.","species","Plantae","Charophyta","Equisetopsida","Poales","Cyperaceae","Carex","Common Grass-sedge","10","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/apni/2906315","Lissanthe strigosa","(Sm.) R.Br.","species","Plantae","Charophyta","Equisetopsida","Ericales","Ericaceae","Lissanthe","Peach Heath","10","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/node/ausmoss/2906274","Metzgeria leptoneura","Spruce","species","Plantae","Marchantiophyta","Jungermanniopsida","Metzgeriales","Metzgeriaceae","Metzgeria","Hooked Veilwort","10","","","","","","","","","","","","","","","","","","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51286863","Acacia dealbata","Link","species","Plantae","Charophyta","Equisetopsida","Fabales","Fabaceae","Acacia","Silver Wattle","10","","","","","","","","","","","","","","","","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51435983","Daviesia ulicifolia","Andrews","species","Plantae","Charophyta","Equisetopsida","Fabales","Fabaceae","Daviesia","Gorse Bitter-pea","10","","","","","","","","","","","","","","","","Poorly-known species","Poorly-known species","","","",""
+"https://id.biodiversity.org.au/taxon/apni/51458816","Caladenia carnea","R.Br.","species","Plantae","Charophyta","Equisetopsida","Asparagales","Orchidaceae","Caladenia","Pink Fingers","10","","","","","","","","","","","","","","","","","","","","",""
+`;
+      // --- END: services/data.ts ---
+
+      // --- START: services/csvParser.ts ---
+      function toCamelCase(str) {
+        return str
+          .replace(/[^a-zA-Z0-9 ]/g, '')
+          .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
+            index === 0 ? word.toLowerCase() : word.toUpperCase()
+          )
+          .replace(/\s+/g, '');
+      }
+
+      const parseCSV = (csvString) => {
+        const lines = csvString.trim().split('\n');
+        if (lines.length < 2) {
+          return [];
+        }
+
+        const headerLine = lines.shift();
+        const headers = headerLine.split(',').map(h => toCamelCase(h.trim().replace(/"/g, '')));
+
+        const data = lines.map(line => {
+          const values = [];
+          let current = '';
+          let inQuotes = false;
+
+          for (const char of line) {
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              values.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          values.push(current.trim());
+
+          const entry = {};
+          headers.forEach((header, index) => {
+            entry[header] = values[index] ? values[index].replace(/"/g, '') : '';
+          });
+          return entry;
+        });
+
+        return data;
+      };
+      // --- END: services/csvParser.ts ---
+
+      // --- START: services/imageFetcher.ts ---
+      const fetchSpeciesImageUrl = async (species) => {
+        if (!species?.speciesName) {
+          return null;
+        }
+
+        const searchName = encodeURIComponent(species.speciesName.split('(')[0].trim());
+
+        // --- 1. Try Wikipedia ---
+        try {
+          const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${searchName}&prop=pageimages&format=json&pithumbsize=1200&origin=*`;
+          const response = await fetch(wikiUrl);
+          if (!response.ok) throw new Error('Wikipedia API response not OK');
+          
+          const data = await response.json();
+          const pages = data.query.pages;
+          const pageId = Object.keys(pages)[0];
+
+          if (pageId !== '-1') {
+            const imageUrlFromWiki = pages[pageId]?.thumbnail?.source;
+            if (imageUrlFromWiki) {
+              return imageUrlFromWiki;
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch image from Wikipedia for "${species.speciesName}", trying iNaturalist.`, error);
+        }
+
+        // --- 2. Fallback to iNaturalist ---
+        try {
+          const iNatTaxaUrl = `https://api.inaturalist.org/v1/taxa?q=${searchName}`;
+          const taxaResponse = await fetch(iNatTaxaUrl);
+          if (!taxaResponse.ok) throw new Error('iNaturalist Taxa API response not OK');
+
+          const taxaData = await taxaResponse.json();
+          if (taxaData.results && taxaData.results.length > 0) {
+            const taxon = taxaData.results[0];
+            const imageUrlFromINat = taxon.default_photo?.large_url || taxon.default_photo?.medium_url;
+            if (imageUrlFromINat) {
+              return imageUrlFromINat;
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to fetch image from iNaturalist for "${species.speciesName}".`, error);
+        }
+
+        // --- 3. Final Fallback (No Image) ---
+        return null;
+      };
+      // --- END: services/imageFetcher.ts ---
+
+      // --- START: components/SpeciesDetail.tsx ---
+      const InfoCard = ({ title, children }) => (
+          <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+            <h3 className="text-lg font-semibold text-cyan-400 mb-2 border-b border-gray-700 pb-1">{title}</h3>
+            {children}
+          </div>
+      );
+
+      const DetailRow = ({ label, value }) => {
+          if (!value) return null;
+          return (
+              <div className="flex justify-between py-1 text-sm">
+                  <span className="text-gray-400">{label}:</span>
+                  <span className="text-gray-200 text-right">{value}</span>
+              </div>
+          );
+      };
+
+      const ExternalLinkIcon = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || 'w-4 h-4 ml-2'}>
+          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+        </svg>
+      );
+
+      const SpeciesDetail = ({ species }) => {
+        const [imageUrl, setImageUrl] = useState(null);
+        const [isImageLoading, setIsImageLoading] = useState(true);
+
+        useEffect(() => {
+          if (!species) return;
+
+          const getImage = async () => {
+            setIsImageLoading(true);
+            const url = await fetchSpeciesImageUrl(species);
+            setImageUrl(url);
+            setIsImageLoading(false);
+          };
+
+          getImage();
+        }, [species]);
+
+        if (!species) {
+          return (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <p className="text-xl">Select a species from the list to see details.</p>
+            </div>
+          );
+        }
+
+        const {
+          speciesName,
+          vernacularName,
+          scientificNameAuthorship,
+          kingdom,
+          phylum,
+          'class': speciesClass,
+          order,
+          family,
+          genus,
+          numberOfRecords
+        } = species;
+
+        const conservationStatuses = Object.entries(species)
+          .filter(([key, value]) => (key.toLowerCase().includes('status') || key.toLowerCase().includes('threatened')) && value)
+          .map(([key, value]) => {
+            const formattedKey = key
+              .replace(/([A-Z])/g, ' $1')
+              .replace(/Conservation Status|status|:|Priority/gi, '')
+              .replace(/Epbc/i, 'EPBC')
+              .trim();
+            return { region: formattedKey.charAt(0).toUpperCase() + formattedKey.slice(1), status: value };
+          })
+          .filter(item => item.region !== "Western Australia");
+
+        const specialMentions = Object.entries(species)
+          .filter(([key, value]) => (key.toLowerCase().includes('agreement') || key.toLowerCase().includes('taxa') || key.toLowerCase().includes('wons') || key.toLowerCase().includes('pests') || key.toLowerCase().includes('list')) && value)
+          .map(([key, value]) => {
+              const formattedKey = key
+              .replace(/([A-Z])/g, ' $1')
+              .replace(/\(ROKAMBA\)| \(CAMBA\)| \(JAMBA\)| \(WoNS\)|as at Feb\. 2013| \(ABS\)/gi, '')
+              .trim();
+            return { mention: formattedKey.charAt(0).toUpperCase() + formattedKey.slice(1), value: value };
+          });
+        
+        const biodiversityUrl = `https://biodiversity.org.au/afd/taxa/${species.speciesName.replace(/ /g, '_')}`;
+        const wikipediaUrl = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(vernacularName || speciesName)}`;
+        const iNaturalistUrl = `https://www.inaturalist.org/taxa/search?q=${encodeURIComponent(speciesName)}`;
+
+        return (
+          <div className="p-4 md:p-6 lg:p-8 text-gray-200">
+              <div className="max-w-4xl mx-auto">
+                  <h1 className="text-3xl md:text-4xl font-bold text-white">{vernacularName || speciesName}</h1>
+                  <p className="text-xl italic text-gray-400 mt-1 mb-6">{speciesName} <span className="text-base not-italic">{scientificNameAuthorship}</span></p>
+
+                  <div className="aspect-w-16 aspect-h-9 mb-6 bg-gray-800 rounded-lg shadow-lg flex items-center justify-center min-h-[200px]">
+                      {isImageLoading ? (
+                        <div className="text-gray-400">Loading image...</div>
+                      ) : imageUrl ? (
+                        <img
+                            src={imageUrl}
+                            alt={`Illustration of ${vernacularName || speciesName}`}
+                            className="w-full h-full object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="text-gray-500 text-center p-4">
+                            <p>Image not available</p>
+                            <p className="text-sm">(Illustration of {vernacularName || speciesName})</p>
+                        </div>
+                      )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <InfoCard title="Taxonomy">
+                        <DetailRow label="Kingdom" value={kingdom}/>
+                        <DetailRow label="Phylum" value={phylum}/>
+                        <DetailRow label="Class" value={speciesClass}/>
+                        <DetailRow label="Order" value={order}/>
+                        <DetailRow label="Family" value={family}/>
+                        <DetailRow label="Genus" value={genus}/>
+                      </InfoCard>
+
+                      <InfoCard title="Records">
+                        <DetailRow label="Number of records" value={numberOfRecords}/>
+                        {specialMentions.map(({mention, value}) => (
+                            <DetailRow key={mention} label={mention} value={value === 'Y' ? 'Yes' : value} />
+                        ))}
+                      </InfoCard>
+
+                      {conservationStatuses.length > 0 && (
+                          <InfoCard title="Conservation Status">
+                              {conservationStatuses.map(({ region, status }) => (
+                                  <DetailRow key={region} label={region} value={status} />
+                              ))}
+                          </InfoCard>
+                      )}
+
+                      <InfoCard title="External Links">
+                          <div className="flex flex-col space-y-2">
+                              <a href={biodiversityUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-2 bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors duration-200">
+                                  Biodiversity.org.au <ExternalLinkIcon />
+                              </a>
+                              <a href={wikipediaUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-2 bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors duration-200">
+                                  Wikipedia <ExternalLinkIcon />
+                              </a>
+                              <a href={iNaturalistUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-2 bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors duration-200">
+                                  iNaturalist <ExternalLinkIcon />
+                              </a>
+                          </div>
+                      </InfoCard>
+                  </div>
+              </div>
+          </div>
+        );
+      };
+      // --- END: components/SpeciesDetail.tsx ---
+
+      // --- START: components/SpeciesList.tsx ---
+      const SpeciesList = ({
+        speciesList,
+        kingdoms,
+        selectedSpecies,
+        onSelect,
+        searchTerm,
+        onSearchChange,
+        kingdomFilter,
+        onKingdomFilterChange
+      }) => {
+        return (
+          <div className="flex flex-col h-full">
+            <div className="p-4 bg-gray-700/50 border-b border-gray-600">
+              <input
+                type="text"
+                placeholder="Search species..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="w-full p-2 bg-gray-800 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+              <div className="mt-2">
+                <label htmlFor="kingdom-filter" className="text-sm text-gray-400 mr-2">Kingdom:</label>
+                <select
+                  id="kingdom-filter"
+                  value={kingdomFilter}
+                  onChange={(e) => onKingdomFilterChange(e.target.value)}
+                  className="w-full p-2 bg-gray-800 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  {kingdoms.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex-grow overflow-y-auto">
+              {speciesList.length > 0 ? (
+                <ul>
+                  {speciesList.map((species) => (
+                    <li
+                      key={species.species}
+                      onClick={() => onSelect(species)}
+                      className={`p-4 cursor-pointer border-b border-gray-700 transition-colors duration-200 ${
+                        selectedSpecies?.species === species.species
+                          ? 'bg-cyan-600/30'
+                          : 'hover:bg-gray-700/50'
+                      }`}
+                    >
+                      <h3 className="font-semibold text-white">{species.vernacularName || species.speciesName}</h3>
+                      <p className="text-sm text-gray-400 italic">{species.speciesName}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  No species found.
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+      // --- END: components/SpeciesList.tsx ---
+
+      // --- START: App.tsx ---
+      const App = () => {
+        const [allSpecies, setAllSpecies] = useState([]);
+        const [selectedSpecies, setSelectedSpecies] = useState(null);
+        const [searchTerm, setSearchTerm] = useState('');
+        const [kingdomFilter, setKingdomFilter] = useState('All');
+        const [isLoading, setIsLoading] = useState(true);
+        const [isDownloading, setIsDownloading] = useState(false);
+        const [downloadProgress, setDownloadProgress] = useState(0);
+
+        useEffect(() => {
+          try {
+            const parsedData = parseCSV(csvData);
+            setAllSpecies(parsedData);
+            if (parsedData.length > 0) {
+              setSelectedSpecies(parsedData[0]);
+            }
+          } catch (error) {
+            console.error("Failed to parse CSV data:", error);
+          } finally {
+            setIsLoading(false);
+          }
+        }, []);
+
+        const kingdoms = useMemo(() => {
+          if (isLoading) return [];
+          const kingdomSet = new Set(allSpecies.map(s => s.kingdom).filter(k => k));
+          return ['All', ...Array.from(kingdomSet).sort()];
+        }, [allSpecies, isLoading]);
+
+        const filteredSpecies = useMemo(() => {
+          return allSpecies.filter(s => {
+            const searchLower = searchTerm.toLowerCase();
+            const matchesSearch = (s.speciesName?.toLowerCase().includes(searchLower) ||
+                                  s.vernacularName?.toLowerCase().includes(searchLower));
+            const matchesKingdom = kingdomFilter === 'All' || s.kingdom === kingdomFilter;
+            return matchesSearch && matchesKingdom;
+          });
+        }, [allSpecies, searchTerm, kingdomFilter]);
+        
+        const handleSelectSpecies = (species) => {
+          setSelectedSpecies(species);
+        };
+        
+        const createSpeciesHtml = (species, imagePath, offlineContent) => {
+          const { speciesName, vernacularName, scientificNameAuthorship, kingdom, phylum, 'class': speciesClass, order, family, genus } = species;
+          
+          const conservationStatuses = Object.entries(species)
+            .filter(([key, value]) => (key.toLowerCase().includes('status') || key.toLowerCase().includes('threatened')) && value)
+            .map(([key, value]) => {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/Conservation Status|:|Priority/gi, '').trim();
+              return `<li><strong>${formattedKey}:</strong> ${value}</li>`;
+            }).join('');
+
+          const biodiversityUrl = `https://biodiversity.org.au/afd/taxa/${species.speciesName.replace(/ /g, '_')}`;
+          const wikipediaUrl = offlineContent.hasOfflineWiki ? './wikipedia.html' : `https://en.wikipedia.org/wiki/${encodeURIComponent(speciesName)}`;
+          const iNaturalistUrl = `https://www.inaturalist.org/taxa/search?q=${encodeURIComponent(speciesName)}`;
+
+          return `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${vernacularName || speciesName}</title>
+                <style> body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0 auto; max-width: 800px; padding: 2em; } img { max-width: 100%; height: auto; border-radius: 8px; } h1, h2 { border-bottom: 1px solid #eaeaea; padding-bottom: 0.5em;} ul { padding-left: 1.5em; } </style>
+            </head>
+            <body>
+                <h1>${vernacularName || speciesName}</h1>
+                <p><em>${speciesName} ${scientificNameAuthorship || ''}</em></p>
+                ${imagePath ? `<img src="${imagePath}" alt="Image of ${vernacularName || speciesName}">` : '<p>Image not available.</p>'}
+                
+                <h2>Taxonomy</h2>
+                <ul>
+                    <li><strong>Kingdom:</strong> ${kingdom || 'N/A'}</li>
+                    <li><strong>Phylum:</strong> ${phylum || 'N/A'}</li>
+                    <li><strong>Class:</strong> ${speciesClass || 'N/A'}</li>
+                    <li><strong>Order:</strong> ${order || 'N/A'}</li>
+                    <li><strong>Family:</strong> ${family || 'N/A'}</li>
+                    <li><strong>Genus:</strong> ${genus || 'N/A'}</li>
+                </ul>
+                
+                ${conservationStatuses ? `<h2>Conservation Status</h2><ul>${conservationStatuses}</ul>` : ''}
+
+                <h2>External Links</h2>
+                <ul>
+                    <li><a href="${biodiversityUrl}" target="_blank">Biodiversity.org.au (Requires Internet)</a></li>
+                    <li><a href="${wikipediaUrl}" target="_blank">Wikipedia ${offlineContent.hasOfflineWiki ? '(Offline Copy)' : '(Requires Internet)'}</a></li>
+                    <li><a href="${iNaturalistUrl}" target="_blank">iNaturalist (Requires Internet)</a></li>
+                </ul>
+            </body>
+            </html>
+          `;
+        };
+        
+        const fetchAndProcessWikipediaPage = async (species) => {
+          const { speciesName, vernacularName } = species;
+
+          // Helper function to attempt fetching and processing a page
+          const attemptFetch = async (name, titleForPage) => {
+              if (!name) return null;
+              try {
+                  const searchName = encodeURIComponent(name.split('(')[0].trim());
+                  const wikiApiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${searchName}&prop=text&format=json&origin=*`;
+                  const response = await fetch(wikiApiUrl);
+                  if (!response.ok) return null;
+
+                  const data = await response.json();
+                  if (data.error) {
+                      console.warn(`Wikipedia API error for ${name}: ${data.error.info}`);
+                      return null;
+                  }
+
+                  let htmlContent = data.parse?.text?.['*'];
+                  if (!htmlContent) return null;
+
+                  // Process HTML: make relative links absolute and fix protocol-relative URLs
+                  htmlContent = htmlContent
+                    .replace(/href="\/wiki\//g, 'href="https://en.wikipedia.org/wiki/')
+                    .replace(/src="\/\//g, 'src="https://');
+
+                  const pageTitle = data.parse?.title || titleForPage;
+                  const fullHtml = `
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Wikipedia: ${pageTitle}</title>
+                        <style>
+                            body { font-family: sans-serif; line-height: 1.6; margin: 0 auto; max-width: 800px; padding: 2em; color: #333; background-color: #fff; }
+                            a { color: #0645ad; }
+                            img { max-width: 100%; height: auto; }
+                            .infobox { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 1em; margin: 0 0 1em 1em; float: right; clear: right; max-width: 300px; font-size: 0.9em; }
+                            h1, h2, h3 { border-bottom: 1px solid #a2a9b1; padding-bottom: 0.2em; color: #000; }
+                            .mw-editsection, .mw-kartographer-maplink { display: none; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>Offline copy of Wikipedia's "${pageTitle}" page</h1>
+                        <p><em>Some elements may not display correctly. For the full experience, <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle)}" target="_blank">visit the original page online</a>.</em></p>
+                        <hr>
+                        ${htmlContent}
+                    </body>
+                    </html>
+                  `;
+                  return fullHtml;
+              } catch (error) {
+                  console.error(`Failed to fetch/process Wikipedia page for ${name}:`, error);
+                  return null;
+              }
+          };
+
+          // 1. Try with vernacular (common) name first. It's often the main article title.
+          let pageHtml = await attemptFetch(vernacularName, vernacularName || speciesName);
+          
+          // 2. If that fails, fall back to the scientific name.
+          if (!pageHtml) {
+              pageHtml = await attemptFetch(speciesName, speciesName);
+          }
+
+          return pageHtml;
+        };
+
+        const handleDownload = async () => {
+          setIsDownloading(true);
+          setDownloadProgress(0);
+
+          const zip = new JSZip();
+          const rootFolder = zip.folder("Flora_and_Fauna_Offline_Library");
+
+          let rootIndexHtml = `
+            <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Offline Library Index</title><style>body { font-family: sans-serif; line-height: 1.6; padding: 2em; } ul { list-style: none; padding: 0; } li { margin: 0.5em 0; } a { text-decoration: none; color: #0066cc; } a:hover { text-decoration: underline; }</style></head><body>
+            <h1>Flora & Fauna Interactive Library</h1><p>This is an offline archive. Select a species to view its details. Some external links on detail pages require an internet connection.</p><ul>`;
+
+          for (let i = 0; i < allSpecies.length; i++) {
+            const species = allSpecies[i];
+            const safeFolderName = (species.vernacularName || species.speciesName).replace(/[^a-zA-Z0-9]/g, '_');
+            const speciesFolder = rootFolder.folder(safeFolderName);
+            
+            const imageUrl = await fetchSpeciesImageUrl(species);
+            let localImagePath = null;
+
+            if (imageUrl) {
+              try {
+                // Using a CORS proxy to fetch images from domains like Wikipedia that may block direct access
+                const response = await fetch(`https://cors-anywhere.herokuapp.com/${imageUrl}`);
+                if (response.ok) {
+                  const blob = await response.blob();
+                  const extension = new URL(imageUrl).pathname.split('.').pop() || 'jpg';
+                  localImagePath = `image.${extension}`;
+                  speciesFolder.file(localImagePath, blob);
+                }
+              } catch (error) {
+                console.error(`Failed to download image for ${species.speciesName}:`, error);
+              }
+            }
+            
+            const wikipediaHtml = await fetchAndProcessWikipediaPage(species);
+            let hasOfflineWiki = false;
+            if (wikipediaHtml) {
+                speciesFolder.file("wikipedia.html", wikipediaHtml);
+                hasOfflineWiki = true;
+            }
+
+            const speciesHtml = createSpeciesHtml(species, localImagePath, { hasOfflineWiki });
+            speciesFolder.file("index.html", speciesHtml);
+
+            rootIndexHtml += `<li><a href="./${safeFolderName}/index.html">${species.vernacularName || species.speciesName}</a></li>`;
+            setDownloadProgress(Math.round(((i + 1) / allSpecies.length) * 100));
+          }
+
+          rootIndexHtml += `</ul></body></html>`;
+          rootFolder.file("index.html", rootIndexHtml);
+
+          zip.generateAsync({ type: "blob" }).then((content) => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = "flora_fauna_offline.zip";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            setIsDownloading(false);
+          });
+        };
+
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+              <div className="text-2xl">Loading Species Library...</div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex flex-col h-screen font-sans">
+            <header className="bg-gray-800 text-white p-4 shadow-lg flex-shrink-0">
+              <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold">Flora & Fauna Interactive Library</h1>
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors duration-200"
+                >
+                  {isDownloading ? `Downloading... ${downloadProgress}%` : 'Download Offline Pack'}
+                </button>
+              </div>
+            </header>
+            <div className="flex flex-grow overflow-hidden">
+              <aside className="w-full md:w-1/3 lg:w-1/4 bg-gray-800 flex flex-col overflow-hidden">
+                <SpeciesList
+                  speciesList={filteredSpecies}
+                  kingdoms={kingdoms}
+                  selectedSpecies={selectedSpecies}
+                  onSelect={handleSelectSpecies}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  kingdomFilter={kingdomFilter}
+                  onKingdomFilterChange={setKingdomFilter}
+                />
+              </aside>
+              <main className="w-full md:w-2/3 lg:w-3/4 bg-gray-900 overflow-y-auto">
+                <SpeciesDetail species={selectedSpecies} />
+              </main>
+            </div>
+          </div>
+        );
+      };
+      // --- END: App.tsx ---
+      
+      // --- START: index.tsx ---
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
+      }
+
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+      // --- END: index.tsx ---
+    </script>
+</body>
+</html>
